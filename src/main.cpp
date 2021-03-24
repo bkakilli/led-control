@@ -34,7 +34,6 @@ void configModeCallback (WiFiManager *myWiFiManager) {
 void setup_wifi() {
   WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
   // put your setup code here, to run once:
-  Serial.begin(115200);
   
   //set led pin as output
   pinMode(LED, OUTPUT);
@@ -167,11 +166,11 @@ void setup_web_server() {
 /*****************************************************************************************************
  * FASTLED CONFIGURATION
  * */
-#define FASTLED_ESP8266_NODEMCU_PIN_ORDER
+#define FASTLED_ESP8266_RAW_PIN_ORDER
 #include <FastLED.h>
 
-#define NUM_LEDS            3      /* The amount of pixels/leds you have */
-#define DATA_PIN            5      /* The pin your data line is connected to */
+#define NUM_LEDS            20      /* The amount of pixels/leds you have */
+#define DATA_PIN            D5      /* The pin your data line is connected to */
 #define LED_TYPE WS2812B    /* I assume you have WS2812B leds, if not just change it to whatever you have */
 #define BRIGHTNESS          255   /* Control the brightness of your leds */
 #define SATURATION          255   /* Control the saturation of your leds */
@@ -186,7 +185,6 @@ uint8_t draw_period_ms = 1000/FRAMES_PER_SECOND;
 
 void setup_fastled() {
   
-  // FastLED.addLeds<LED_TYPE, DATA_PIN>(leds, NUM_LEDS);
   FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);         // for WS2812 (Neopixel)
   //FastLED.addLeds<LED_TYPE,DATA_PIN,CLK_PIN,COLOR_ORDER>(leds, NUM_LEDS); // for APA102 (Dotstar)
   FastLED.setDither(false);
@@ -199,16 +197,18 @@ void setup_fastled() {
 }
 
 void fastled_update() {
-  // int delta_hue = 255/NUM_LEDS;
-  // hue_value = beat8(led_bpm);
-  // fill_rainbow(leds, NUM_LEDS, hue_value, delta_hue);
-  leds[0] = CRGB(255, 0, 0);
-  leds[1] = CRGB(0, 255, 0);
-  leds[2] = CRGB(0, 0, 255);
+  int delta_hue = 255/NUM_LEDS;
+  hue_value = beat8(led_bpm);
+  fill_rainbow(leds, NUM_LEDS, hue_value, delta_hue);
+  // leds[0] = CRGB(255, 0, 0);
+  // leds[1] = CRGB(0, 255, 0);
+  // leds[2] = CRGB(0, 0, 255);
   FastLED.show();
 }
 
 void setup() {
+  Serial.begin(115200);
+
   setup_wifi();
   setup_web_server();
   setup_fastled();
