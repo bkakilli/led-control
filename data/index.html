@@ -5,14 +5,15 @@
 -->
 <html>
 <head>
-  <title>ESP8266 Web Server</title>
+  <title>Led Controller</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
-  <h1>ESP8266 Web Server</h1>
-  <p>GPIO state<strong> %STATE%</strong></p>
+  <h1>Led Controller</h1>
+
+  <!-- <p>GPIO state<strong> %STATE%</strong></p>
   <p>
     <a href="/on"><button class="button">ON</button></a>
     <a href="/off"><button class="button button2">OFF</button></a>
@@ -31,9 +32,86 @@
     <span class="sensor-labels">Pressure</span>
     <span id="pressure">%PRESSURE%</span>
     <sup class="units">hPa</sup>
+  </p> -->
+
+  <label for="strip_port">Port:</label>
+  <select name="strip_port" id="strip_port_select">
+    <option value="0">D5</option>
+    <option value="1">D6</option>
+    <option value="2">D7</option>
+    <option value="3">D8</option>
+  </select>
+
+  <p>
+    <label for="set_brightness">Brightness:</label>
+    <input type="range" name="set_brightness" id="set_brightness" min="0" max="255" value="255">
+  </p>
+
+  <p>
+    <label for="pattern_bpm">Pattern BPM:</label>
+    <input type="range" name="pattern_bpm" id="pattern_bpm" min="2" max="120" value="10">
+  </p>
+  
+
+  <h2>Choose Pattern</h2>
+  <p onclick="set_palette(0)">
+    <span>Rainbow</span><br>
+    <span><img src="/image?name=rainbow.svg" alt="Rainbow Pattern" /></span>
+  </p>
+  <p onclick="set_palette(1)">
+    <span>Tashangel</span><br>
+    <span><img src="/image?name=tashangel.svg" alt="Tashangel Pattern" /></span>
+  </p>
+  <p><span onclick="set_palette(2)">Scoutie</span></p>
+  <p><span onclick="set_palette(3)">Aquamarine Mermaid</span></p>
+  <p><span onclick="set_palette(4)">Bluefly</span></p>
+  <p><span onclick="set_palette(5)">Blackhorse</span></p>
+  <p><span onclick="set_palette(6)">Red Rosey</span></p>
+  <p><span onclick="set_palette(7)">Dances with Dragons</span></p>
+  <p><span onclick="set_palette(8)">Cyan Magenta Yellow White</span></p>
+  <p>
+    <span>Fill Color: </span>
+    <input type="color" id="solid_color_picker" name="solid_color_picker" value="#ff0000">
   </p>
 </body>
 <script>
+  
+  // Set pallete function
+  function set_palette(pal) {
+    var port = document.getElementById("strip_port_select").value;
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("GET", "/config?port="+port+"&palette="+pal, true);
+    xhttp.send();
+  }
+
+  // Fill solid color function
+  document.getElementById("solid_color_picker").onchange = function() {
+    var color_val = document.getElementById("solid_color_picker").value.substring(1, 7);
+
+    var port = document.getElementById("strip_port_select").value;
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("GET", "/config?port="+port+"&fill_color="+color_val, true);
+    xhttp.send();
+    // alert("/config?port="+port+"&fill_color="+color_val);
+  }
+
+  document.getElementById("pattern_bpm").onchange = function() {
+    var bpm = document.getElementById("pattern_bpm").value;
+    var port = document.getElementById("strip_port_select").value;
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("GET", "/config?port="+port+"&set_bpm="+bpm, true);
+    xhttp.send();
+  }
+
+  document.getElementById("set_brightness").onchange = function() {
+    var brightness = document.getElementById("set_brightness").value;
+    var port = document.getElementById("strip_port_select").value;
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("GET", "/config?port="+port+"&set_brightness="+brightness, true);
+    xhttp.send();
+  }
+
+
   setInterval(function ( ) {
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {

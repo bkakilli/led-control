@@ -7,6 +7,49 @@
 int LED = LED_BUILTIN;
 
 
+/*****************************************************************************************************
+ * FASTLED CONFIGURATION
+ * */
+#define FASTLED_ESP8266_RAW_PIN_ORDER
+#include <FastLED.h>
+#include "led_strip.h"
+#include <vector>
+
+#define NUM_LEDS            24      /* The amount of pixels/leds you have */
+#define DATA_PIN            D5      /* The pin your data line is connected to */
+#define LED_TYPE WS2812B    /* I assume you have WS2812B leds, if not just change it to whatever you have */
+#define BRIGHTNESS          255   /* Control the brightness of your leds */
+#define SATURATION          255   /* Control the saturation of your leds */
+#define COLOR_ORDER         GRB
+#define MILLI_AMPS          200 // IMPORTANT: set the max milli-Amps of your power supply (4A = 4000mA)
+#define FRAMES_PER_SECOND   120  // here you can control the speed. With the Access Point / Web Server the animations run a bit slower.
+
+uint8_t draw_period_ms = 1000/FRAMES_PER_SECOND;
+
+std::vector<LedStrip*> strips;
+
+void setup_fastled() {
+
+  // Add as many ports as you like.
+  // Each port is controlled independently
+  strips.push_back(new LedStripPort<D5>(NUM_LEDS));
+  // strips.push_back(new LedStripPort<D6>(NUM_LEDS));
+  // strips.push_back(new LedStripPort<D7>(NUM_LEDS));
+  // strips.push_back(new LedStripPort<D8>(NUM_LEDS));
+
+  strips[0]->set_palette(CPT_TASHANGEL_GP);
+  // strips[1]->set_palette(CPT_RAINBOW_GP);
+  // strips[0]->init(NUM_LEDS);
+  FastLED.show();
+}
+
+void fastled_update() {
+  for (auto it=strips.begin(); it != strips.end(); ++it)
+    (*it)->update();
+  FastLED.show();
+}
+
+
 /******************************************************************************************
  * WIFIMANAGER CONFIGURATION
  * */
@@ -75,6 +118,7 @@ void setup_wifi() {
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <FS.h>
+#include <stdlib.h>
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
 String ledState;
@@ -146,6 +190,89 @@ void setup_web_server() {
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
+  server.on("/config", HTTP_GET, [](AsyncWebServerRequest *request){
+
+    if (!request->hasParam("port")) {return;}
+    int port_id = atoi(request->getParam("port")->value().c_str());
+    if (port_id >= strips.size()) {
+      Serial.println("Undefined port is configured!");
+      return;
+    }
+    
+    LedStrip *strip = strips[port_id];
+
+    if (request->hasParam("palette")) {
+      String palette_id = request->getParam("palette")->value();
+      
+      Serial.println("Setting palette ID: " + palette_id);
+
+      switch (atoi(palette_id.c_str()))
+      {
+      case 0:
+        strip->set_palette(CPT_RAINBOW_GP);
+        break;
+      case 1:
+        strip->set_palette(CPT_TASHANGEL_GP);
+        break;
+      case 2:
+        strip->set_palette(CPT_SCOUTIE_GP);
+        break;
+      case 3:
+        strip->set_palette(CPT_AQUAMARINEMERMAID_GP);
+        break;
+      case 4:
+        strip->set_palette(CPT_BLUEFLY_GP);
+        break;
+      case 5:
+        strip->set_palette(CPT_BLACKHORSE_GP);
+        break;
+      case 6:
+        strip->set_palette(CPT_BHW2_REDROSEY_GP);
+        break;
+      case 7:
+        strip->set_palette(CPT_DANCES_WITH_DRAGONS_GP);
+        break;
+      case 8:
+        strip->set_palette(CPT_CYAN_MAGENTA_YELLOW_WHITE_GP);
+        break;
+        
+      default:
+        break;
+      }
+      
+    }
+    
+    if (request->hasParam("fill_color")) {
+      String fill_color = request->getParam("fill_color")->value();
+      Serial.println("Setting solid color " + fill_color);
+      const char *str = fill_color.c_str();
+      int r, g, b;
+      sscanf(str, "%02x%02x%02x", &r, &g, &b);
+      strip->set_solid_color(CRGB(r, g, b));
+    }
+    
+    if (request->hasParam("set_bpm")) {
+      uint16_t bpm = atoi(request->getParam("set_bpm")->value().c_str());
+      Serial.println("Setting bpm " + String(bpm));
+      strip->set_bpm(bpm);
+    }
+    
+    if (request->hasParam("set_brightness")) {
+      uint8_t brightness = atoi(request->getParam("set_brightness")->value().c_str());
+      Serial.println("Setting brightness " + String(brightness));
+      strip->set_brightness(brightness);
+    }
+
+  });
+
+  server.on("/image", HTTP_GET, [](AsyncWebServerRequest *request){
+    
+    if (request->hasParam("name")) {
+      String image_name = request->getParam("name")->value();
+      request->send(SPIFFS, "/images/palettes/"+image_name, "image/svg+xml");
+    }
+  });
+
   server.on("/temperature", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", getTemperature().c_str());
   });
@@ -162,50 +289,6 @@ void setup_web_server() {
   server.begin();
 }
 
-
-/*****************************************************************************************************
- * FASTLED CONFIGURATION
- * */
-#define FASTLED_ESP8266_RAW_PIN_ORDER
-#include <FastLED.h>
-
-#define NUM_LEDS            20      /* The amount of pixels/leds you have */
-#define DATA_PIN            D5      /* The pin your data line is connected to */
-#define LED_TYPE WS2812B    /* I assume you have WS2812B leds, if not just change it to whatever you have */
-#define BRIGHTNESS          255   /* Control the brightness of your leds */
-#define SATURATION          255   /* Control the saturation of your leds */
-#define COLOR_ORDER         GRB
-#define MILLI_AMPS          200 // IMPORTANT: set the max milli-Amps of your power supply (4A = 4000mA)
-#define FRAMES_PER_SECOND   120  // here you can control the speed. With the Access Point / Web Server the animations run a bit slower.
-
-CRGB leds[NUM_LEDS];
-uint8_t hue_value = 0;
-uint8_t led_bpm = 10;
-uint8_t draw_period_ms = 1000/FRAMES_PER_SECOND;
-
-void setup_fastled() {
-  
-  FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);         // for WS2812 (Neopixel)
-  //FastLED.addLeds<LED_TYPE,DATA_PIN,CLK_PIN,COLOR_ORDER>(leds, NUM_LEDS); // for APA102 (Dotstar)
-  FastLED.setDither(false);
-  FastLED.setCorrection(TypicalLEDStrip);
-  FastLED.setBrightness(BRIGHTNESS);
-  FastLED.setMaxPowerInVoltsAndMilliamps(5, MILLI_AMPS);
-  FastLED.clear();
-  fill_solid(leds, NUM_LEDS, CRGB::Black);
-  FastLED.show();
-}
-
-void fastled_update() {
-  int delta_hue = 255/NUM_LEDS;
-  hue_value = beat8(led_bpm);
-  fill_rainbow(leds, NUM_LEDS, hue_value, delta_hue);
-  // leds[0] = CRGB(255, 0, 0);
-  // leds[1] = CRGB(0, 255, 0);
-  // leds[2] = CRGB(0, 0, 255);
-  FastLED.show();
-}
-
 void setup() {
   Serial.begin(115200);
 
@@ -215,13 +298,7 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  // for (int i=0; i<3; i++) {
-  //   digitalWrite(LED, LOW);
-  //   delay(150);
-  //   digitalWrite(LED, HIGH);
-  //   delay(150);
-  // }
-  // delay(1100);
-  fastled_update();
+  EVERY_N_MILLISECONDS(draw_period_ms) {
+    fastled_update();
+  }
 }
